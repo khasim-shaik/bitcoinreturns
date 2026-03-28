@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitcoin 5-Year Returns Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .bg-glow {
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(247,147,26,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .header .bitcoin-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+
+  .header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f7931a, #ffb347);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  .header .subtitle {
+    font-size: 1.05rem;
+    color: #888;
+    margin-top: 8px;
+    font-weight: 300;
+  }
+
+  .header .subtitle span {
+    color: #f7931a;
+    font-weight: 500;
+  }
+
+  /* Stat Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: linear-gradient(145deg, #141420, #1a1a2e);
+    border: 1px solid #2a2a3e;
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card:hover {
+    border-color: #f7931a44;
+  }
+
+  .stat-card .label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .stat-card .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #22c55e;
+  }
+
+  .stat-card .value.accent {
+    background: linear-gradient(135deg, #f7931a, #ffb347);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-card .detail {
+    font-size: 0.78rem;
+    color: #555;
+    margin-top: 6px;
+  }
+
+  /* Insight Banner */
+  .insight-banner {
+    background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(247,147,26,0.1));
+    border: 1px solid rgba(34,197,94,0.25);
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-bottom: 32px;
+    text-align: center;
+  }
+
+  .insight-banner p {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #ccc;
+    line-height: 1.6;
+  }
+
+  .insight-banner strong {
+    color: #22c55e;
+    font-weight: 600;
+  }
+
+  .insight-banner .highlight {
+    color: #f7931a;
+    font-weight: 600;
+  }
+
+  /* Chart Sections */
+  .chart-section {
+    background: linear-gradient(145deg, #141420, #1a1a2e);
+    border: 1px solid #2a2a3e;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .chart-section h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #ccc;
+    margin-bottom: 4px;
+  }
+
+  .chart-section .chart-subtitle {
+    font-size: 0.82rem;
+    color: #555;
+    margin-bottom: 20px;
+  }
+
+  .chart-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  .chart-wrapper.main-chart {
+    height: 420px;
+  }
+
+  .chart-wrapper.heatmap-area {
+    overflow-x: auto;
+  }
+
+  /* Heatmap */
+  .heatmap-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 3px;
+    font-size: 0.72rem;
+  }
+
+  .heatmap-table th {
+    padding: 6px 4px;
+    color: #888;
+    font-weight: 500;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  .heatmap-table td {
+    padding: 8px 4px;
+    text-align: center;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    transition: transform 0.2s;
+    cursor: default;
+  }
+
+  .heatmap-table td:hover {
+    transform: scale(1.08);
+    z-index: 2;
+    position: relative;
+  }
+
+  .heatmap-table .year-label {
+    color: #888;
+    font-weight: 500;
+    text-align: right;
+    padding-right: 10px;
+    background: none !important;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 32px 0 16px;
+    color: #444;
+    font-size: 0.78rem;
+  }
+
+  .footer a {
+    color: #f7931a;
+    text-decoration: none;
+  }
+
+  /* Distribution section */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+    .header h1 { font-size: 1.6rem; }
+    .stat-card .value { font-size: 1.5rem; }
+    .chart-wrapper.main-chart { height: 300px; }
+  }
+
+  .chart-wrapper.secondary-chart {
+    height: 320px;
+  }
+
+  /* Tooltip style */
+  .tooltip-custom {
+    background: #1a1a2e !important;
+    border: 1px solid #f7931a44 !important;
+    border-radius: 8px !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="bitcoin-icon">&#8383;</div>
+    <h1>The Case for Patience</h1>
+    <p class="subtitle">Bitcoin 5-Year Holding Period Returns &mdash; <span>Jan 2013 to Mar 2021</span> Buy Windows</p>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <!-- Insight Banner -->
+  <div class="insight-banner" id="insight-banner"></div>
+
+  <!-- Main Chart: 5-Year Returns Over Time -->
+  <div class="chart-section">
+    <h2>5-Year Return by Purchase Month</h2>
+    <p class="chart-subtitle">Each bar represents the total return (%) for someone who bought at that month's average price and sold exactly 5 years later</p>
+    <div class="chart-wrapper main-chart">
+      <canvas id="returnsChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Two column: CAGR + Distribution -->
+  <div class="two-col">
+    <div class="chart-section">
+      <h2>Annualized Return (CAGR)</h2>
+      <p class="chart-subtitle">Compound annual growth rate for each 5-year holding window</p>
+      <div class="chart-wrapper secondary-chart">
+        <canvas id="cagrChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-section">
+      <h2>Return Distribution</h2>
+      <p class="chart-subtitle">How 5-year returns are distributed across all buy windows</p>
+      <div class="chart-wrapper secondary-chart">
+        <canvas id="distChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heatmap -->
+  <div class="chart-section">
+    <h2>Returns Heatmap</h2>
+    <p class="chart-subtitle">5-year total return (%) by purchase year and month &mdash; darker green = higher return</p>
+    <div class="chart-wrapper heatmap-area" id="heatmap-container"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Data source: CryptoCompare historical daily prices &bull; Monthly averages computed from daily OHLC<br>
+    Analysis period: Jan 2013 &ndash; Mar 2026 &bull; All returns calculated on a buy-and-hold basis
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATIC DATA: Monthly average BTC prices (USD)
+// Computed from daily OHLC averages via CryptoCompare
+// ============================================================
+const btcMonthlyPrices = {
+  "2013-01": 15.49, "2013-02": 25.77, "2013-03": 56.42, "2013-04": 129.08,
+  "2013-05": 119.60, "2013-06": 108.15, "2013-07": 95.66, "2013-08": 114.41,
+  "2013-09": 136.86, "2013-10": 166.51, "2013-11": 563.10, "2013-12": 840.55,
+  "2014-01": 933.28, "2014-02": 526.24, "2014-03": 578.42, "2014-04": 465.23,
+  "2014-05": 482.91, "2014-06": 616.36, "2014-07": 616.98, "2014-08": 538.86,
+  "2014-09": 447.85, "2014-10": 363.27, "2014-11": 365.90, "2014-12": 342.43,
+  "2015-01": 250.11, "2015-02": 233.52, "2015-03": 268.49, "2015-04": 235.02,
+  "2015-05": 237.12, "2015-06": 237.46, "2015-07": 278.38, "2015-08": 251.72,
+  "2015-09": 233.34, "2015-10": 264.27, "2015-11": 346.76, "2015-12": 421.96,
+  "2016-01": 411.26, "2016-02": 402.56, "2016-03": 414.98, "2016-04": 432.67,
+  "2016-05": 460.04, "2016-06": 636.03, "2016-07": 659.88, "2016-08": 578.44,
+  "2016-09": 605.97, "2016-10": 639.98, "2016-11": 722.99, "2016-12": 819.95,
+  "2017-01": 907.62, "2017-02": 1055.41, "2017-03": 1128.98, "2017-04": 1207.59,
+  "2017-05": 1866.25, "2017-06": 2622.40, "2017-07": 2515.43, "2017-08": 3841.87,
+  "2017-09": 4092.73, "2017-10": 5309.48, "2017-11": 7724.66, "2017-12": 14892.37,
+  "2018-01": 12944.68, "2018-02": 9391.87, "2018-03": 9037.82, "2018-04": 8012.79,
+  "2018-05": 8457.77, "2018-06": 6791.05, "2018-07": 7100.31, "2018-08": 6699.87,
+  "2018-09": 6602.72, "2018-10": 6488.40, "2018-11": 5432.57, "2018-12": 3724.00,
+  "2019-01": 3702.98, "2019-02": 3685.29, "2019-03": 3942.98, "2019-04": 5151.81,
+  "2019-05": 7250.12, "2019-06": 9360.87, "2019-07": 10649.83, "2019-08": 10627.14,
+  "2019-09": 9800.93, "2019-10": 8392.76, "2019-11": 8365.30, "2019-12": 7269.27,
+  "2020-01": 8334.38, "2020-02": 9646.83, "2020-03": 6911.14, "2020-04": 7193.08,
+  "2020-05": 9241.50, "2020-06": 9470.72, "2020-07": 9559.75, "2020-08": 11630.01,
+  "2020-09": 10651.00, "2020-10": 11841.97, "2020-11": 16544.91, "2020-12": 21805.77,
+  "2021-01": 34556.29, "2021-02": 46018.82, "2021-03": 54577.30, "2021-04": 57026.76,
+  "2021-05": 46692.21, "2021-06": 35804.20, "2021-07": 34318.92, "2021-08": 45585.15,
+  "2021-09": 45946.63, "2021-10": 57610.79, "2021-11": 60717.90, "2021-12": 49459.47,
+  "2022-01": 41159.97, "2022-02": 40674.31, "2022-03": 41938.33, "2022-04": 41550.13,
+  "2022-05": 31757.06, "2022-06": 24516.21, "2022-07": 21475.83, "2022-08": 22438.10,
+  "2022-09": 19789.43, "2022-10": 19627.25, "2022-11": 17630.14, "2022-12": 16953.20,
+  "2023-01": 20148.31, "2023-02": 23301.88, "2023-03": 25041.89, "2023-04": 28845.61,
+  "2023-05": 27527.47, "2023-06": 27715.96, "2023-07": 30089.77, "2023-08": 27881.96,
+  "2023-09": 26299.88, "2023-10": 29672.92, "2023-11": 36535.18, "2023-12": 42452.77,
+  "2024-01": 42880.96, "2024-02": 49544.98, "2024-03": 67468.04, "2024-04": 65944.01,
+  "2024-05": 65156.76, "2024-06": 65996.49, "2024-07": 62753.32, "2024-08": 59999.69,
+  "2024-09": 60269.76, "2024-10": 65479.47, "2024-11": 86181.43, "2024-12": 98231.67,
+  "2025-01": 99842.18, "2025-02": 95462.62, "2025-03": 85053.04, "2025-04": 86269.51,
+  "2025-05": 103453.29, "2025-06": 105722.29, "2025-07": 115236.49, "2025-08": 114930.09,
+  "2025-09": 113073.17, "2025-10": 114142.37, "2025-11": 96507.95, "2025-12": 89033.70,
+  "2026-01": 90537.99, "2026-02": 68945.95, "2026-03": 69828.71
+};
+
+// ============================================================
+// COMPUTE 5-YEAR RETURNS
+// ============================================================
+function addMonths(yearMonth, months) {
+  const [y, m] = yearMonth.split('-').map(Number);
+  const totalMonths = y * 12 + (m - 1) + months;
+  const newYear = Math.floor(totalMonths / 12);
+  const newMonth = (totalMonths % 12) + 1;
+  return `${newYear}-${String(newMonth).padStart(2, '0')}`;
+}
+
+function computeReturns() {
+  const results = [];
+  const allKeys = Object.keys(btcMonthlyPrices).sort();
+
+  for (const buyMonth of allKeys) {
+    const sellMonth = addMonths(buyMonth, 60); // 5 years = 60 months
+    if (btcMonthlyPrices[sellMonth] !== undefined) {
+      const buyPrice = btcMonthlyPrices[buyMonth];
+      const sellPrice = btcMonthlyPrices[sellMonth];
+      const returnPct = ((sellPrice - buyPrice) / buyPrice) * 100;
+      const cagr = (Math.pow(sellPrice / buyPrice, 1/5) - 1) * 100;
+      results.push({
+        buyMonth,
+        sellMonth,
+        buyPrice,
+        sellPrice,
+        returnPct: Math.round(returnPct * 10) / 10,
+        cagr: Math.round(cagr * 10) / 10
+      });
+    }
+  }
+  return results;
+}
+
+const returns = computeReturns();
+
+// ============================================================
+// SUMMARY STATISTICS
+// ============================================================
+const allReturns = returns.map(r => r.returnPct);
+const allCagr = returns.map(r => r.cagr);
+const profitable = allReturns.filter(r => r > 0).length;
+const profitablePct = Math.round((profitable / allReturns.length) * 100);
+
+const median = arr => {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+const stats = {
+  totalPeriods: allReturns.length,
+  medianReturn: Math.round(median(allReturns)),
+  avgReturn: Math.round(allReturns.reduce((a,b) => a+b, 0) / allReturns.length),
+  minReturn: Math.round(Math.min(...allReturns)),
+  maxReturn: Math.round(Math.max(...allReturns)),
+  profitablePct,
+  medianCagr: Math.round(median(allCagr) * 10) / 10,
+  avgCagr: Math.round(allCagr.reduce((a,b) => a+b, 0) / allCagr.length * 10) / 10,
+  bestBuy: returns.reduce((a, b) => a.returnPct > b.returnPct ? a : b),
+  worstBuy: returns.reduce((a, b) => a.returnPct < b.returnPct ? a : b)
+};
+
+// ============================================================
+// RENDER STAT CARDS
+// ============================================================
+function renderStats() {
+  const grid = document.getElementById('stats-grid');
+  const cards = [
+    { label: 'Profitable Periods', value: `${stats.profitablePct}%`, detail: `${profitable} of ${stats.totalPeriods} buy windows`, cls: stats.profitablePct === 100 ? 'accent' : '' },
+    { label: 'Median 5-Year Return', value: `${stats.medianReturn.toLocaleString()}%`, detail: `Average: ${stats.avgReturn.toLocaleString()}%`, cls: '' },
+    { label: 'Median CAGR', value: `${stats.medianCagr}%`, detail: `Annualized compound growth`, cls: '' },
+    { label: 'Worst 5-Year Return', value: `${stats.minReturn > 0 ? '+' : ''}${stats.minReturn.toLocaleString()}%`, detail: `Bought ${stats.worstBuy.buyMonth}`, cls: stats.minReturn > 0 ? '' : '' },
+    { label: 'Best 5-Year Return', value: `+${stats.maxReturn.toLocaleString()}%`, detail: `Bought ${stats.bestBuy.buyMonth}`, cls: 'accent' }
+  ];
+
+  grid.innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="label">${c.label}</div>
+      <div class="value ${c.cls}">${c.value}</div>
+      <div class="detail">${c.detail}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// RENDER INSIGHT BANNER
+// ============================================================
+function renderInsight() {
+  const banner = document.getElementById('insight-banner');
+  const minR = stats.minReturn;
+  const medR = stats.medianReturn;
+
+  let insightText;
+  if (minR > 0) {
+    insightText = `<p>Across <strong>${stats.totalPeriods} different buy windows</strong> from Jan 2013 to Mar 2021,
+      <strong>every single 5-year holding period was profitable</strong>.
+      The median investor saw a <span class="highlight">${medR.toLocaleString()}% return</span>,
+      and even the worst entry point still yielded <strong>+${minR.toLocaleString()}%</strong>.
+      Patience has been the single most reliable Bitcoin strategy.</p>`;
+  } else {
+    insightText = `<p>Across <strong>${stats.totalPeriods} different buy windows</strong> from Jan 2013 to Mar 2021,
+      <strong>${stats.profitablePct}%</strong> of 5-year holding periods were profitable.
+      The median investor saw a <span class="highlight">${medR.toLocaleString()}% return</span>.
+      Patience has historically been the most reliable Bitcoin strategy.</p>`;
+  }
+  banner.innerHTML = insightText;
+}
+
+// ============================================================
+// CHART HELPERS
+// ============================================================
+const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatLabel(ym) {
+  const [y, m] = ym.split('-');
+  return `${monthNames[parseInt(m)-1]} ${y}`;
+}
+
+function returnColor(val, alpha = 1) {
+  if (val >= 5000) return `rgba(247, 147, 26, ${alpha})`;
+  if (val >= 1000) return `rgba(34, 197, 94, ${alpha})`;
+  if (val >= 500)  return `rgba(74, 222, 128, ${alpha})`;
+  if (val >= 100)  return `rgba(134, 239, 172, ${alpha})`;
+  if (val >= 0)    return `rgba(187, 247, 208, ${alpha})`;
+  return `rgba(239, 68, 68, ${alpha})`;
+}
+
+// ============================================================
+// MAIN RETURNS BAR CHART
+// ============================================================
+function renderReturnsChart() {
+  const ctx = document.getElementById('returnsChart').getContext('2d');
+  const labels = returns.map(r => formatLabel(r.buyMonth));
+  const data = returns.map(r => r.returnPct);
+  const colors = data.map(v => returnColor(v, 0.85));
+  const borderColors = data.map(v => returnColor(v, 1));
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '5-Year Return (%)',
+        data,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          borderColor: '#f7931a66',
+          borderWidth: 1,
+          titleColor: '#e0e0e0',
+          bodyColor: '#ccc',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            title: (items) => {
+              const i = items[0].dataIndex;
+              return `Bought: ${formatLabel(returns[i].buyMonth)}`;
+            },
+            afterTitle: (items) => {
+              const i = items[0].dataIndex;
+              return `Sold: ${formatLabel(returns[i].sellMonth)}`;
+            },
+            label: (item) => {
+              const i = item.dataIndex;
+              const r = returns[i];
+              return [
+                `Return: ${r.returnPct.toLocaleString()}%`,
+                `CAGR: ${r.cagr}%`,
+                `Buy: $${r.buyPrice.toLocaleString()}`,
+                `Sell: $${r.sellPrice.toLocaleString()}`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#555',
+            font: { size: 10 },
+            maxRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 30
+          },
+          grid: { color: '#1a1a2e' }
+        },
+        y: {
+          ticks: {
+            color: '#555',
+            callback: v => v.toLocaleString() + '%'
+          },
+          grid: { color: '#1a1a2e' }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CAGR LINE CHART
+// ============================================================
+function renderCagrChart() {
+  const ctx = document.getElementById('cagrChart').getContext('2d');
+  const labels = returns.map(r => formatLabel(r.buyMonth));
+  const data = returns.map(r => r.cagr);
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'CAGR (%)',
+        data,
+        borderColor: '#f7931a',
+        backgroundColor: 'rgba(247, 147, 26, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#f7931a',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          borderColor: '#f7931a66',
+          borderWidth: 1,
+          titleColor: '#e0e0e0',
+          bodyColor: '#ccc',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            title: (items) => `Bought: ${formatLabel(returns[items[0].dataIndex].buyMonth)}`,
+            label: (item) => `CAGR: ${item.raw}%`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#555', font: { size: 9 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 15 },
+          grid: { color: '#1a1a2e' }
+        },
+        y: {
+          ticks: { color: '#555', callback: v => v + '%' },
+          grid: { color: '#1a1a2e' }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================
+// DISTRIBUTION HISTOGRAM
+// ============================================================
+function renderDistChart() {
+  const ctx = document.getElementById('distChart').getContext('2d');
+
+  // Create buckets
+  const buckets = [
+    { label: '<0%', min: -Infinity, max: 0 },
+    { label: '0-100%', min: 0, max: 100 },
+    { label: '100-500%', min: 100, max: 500 },
+    { label: '500-1K%', min: 500, max: 1000 },
+    { label: '1K-5K%', min: 1000, max: 5000 },
+    { label: '5K-10K%', min: 5000, max: 10000 },
+    { label: '10K%+', min: 10000, max: Infinity }
+  ];
+
+  const counts = buckets.map(b =>
+    allReturns.filter(r => r >= b.min && r < b.max).length
+  );
+
+  const barColors = [
+    'rgba(239,68,68,0.7)',
+    'rgba(187,247,208,0.7)',
+    'rgba(134,239,172,0.7)',
+    'rgba(74,222,128,0.7)',
+    'rgba(34,197,94,0.7)',
+    'rgba(22,163,74,0.7)',
+    'rgba(247,147,26,0.7)'
+  ];
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: buckets.map(b => b.label),
+      datasets: [{
+        label: 'Periods',
+        data: counts,
+        backgroundColor: barColors,
+        borderColor: barColors.map(c => c.replace('0.7', '1')),
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          borderColor: '#f7931a66',
+          borderWidth: 1,
+          titleColor: '#e0e0e0',
+          bodyColor: '#ccc',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: (item) => `${item.raw} periods (${Math.round(item.raw / allReturns.length * 100)}%)`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#555', font: { size: 10 } },
+          grid: { color: '#1a1a2e' }
+        },
+        y: {
+          ticks: { color: '#555', stepSize: 5 },
+          grid: { color: '#1a1a2e' }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================
+// HEATMAP TABLE
+// ============================================================
+function renderHeatmap() {
+  const container = document.getElementById('heatmap-container');
+
+  // Group returns by year
+  const byYear = {};
+  for (const r of returns) {
+    const [y, m] = r.buyMonth.split('-');
+    if (!byYear[y]) byYear[y] = {};
+    byYear[y][parseInt(m)] = r.returnPct;
+  }
+
+  const years = Object.keys(byYear).sort();
+  const maxRet = Math.max(...allReturns);
+  const minRet = Math.min(...allReturns);
+
+  function heatColor(val) {
+    if (val === undefined) return 'transparent';
+    if (val < 0) {
+      const intensity = Math.min(Math.abs(val) / 50, 1);
+      return `rgba(239, 68, 68, ${0.3 + intensity * 0.5})`;
+    }
+    // Log scale for positive values
+    const logVal = Math.log10(val + 1);
+    const logMax = Math.log10(maxRet + 1);
+    const ratio = logVal / logMax;
+    if (ratio > 0.75) return `rgba(247, 147, 26, ${0.6 + ratio * 0.3})`;
+    if (ratio > 0.5) return `rgba(34, 197, 94, ${0.5 + ratio * 0.4})`;
+    return `rgba(34, 197, 94, ${0.15 + ratio * 0.5})`;
+  }
+
+  function textColor(val) {
+    if (val === undefined) return 'transparent';
+    return val >= 5000 ? '#fff' : val >= 500 ? '#e0e0e0' : val >= 0 ? '#ccc' : '#fca5a5';
+  }
+
+  let html = '<table class="heatmap-table"><thead><tr><th></th>';
+  for (let m = 1; m <= 12; m++) {
+    html += `<th>${monthNames[m-1]}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const year of years) {
+    html += `<tr><td class="year-label">${year}</td>`;
+    for (let m = 1; m <= 12; m++) {
+      const val = byYear[year]?.[m];
+      if (val !== undefined) {
+        const display = val >= 10000 ? Math.round(val/1000) + 'K' :
+                        val >= 1000 ? (val/1000).toFixed(1) + 'K' :
+                        Math.round(val) + '%';
+        html += `<td style="background:${heatColor(val)}; color:${textColor(val)}" title="Bought ${monthNames[m-1]} ${year}: ${val.toLocaleString()}% return">${display}</td>`;
+      } else {
+        html += `<td style="background:transparent; color:#333">—</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderStats();
+renderInsight();
+renderReturnsChart();
+renderCagrChart();
+renderDistChart();
+renderHeatmap();
+</script>
+
+</body>
+</html>
